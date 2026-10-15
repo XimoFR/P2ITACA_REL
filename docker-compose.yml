@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: bigdata-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: bigdata
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - bigdata-net
+
+volumes:
+  postgres-data:
+
+networks:
+  bigdata-net:
+    driver: bridge
