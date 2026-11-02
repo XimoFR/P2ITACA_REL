@@ -1,5 +1,6 @@
 # Datos y credenciales
 data/raw/
+data/exportaciones/
 data/*.csv
 data/*.json
 .env
