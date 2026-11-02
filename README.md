@@ -27,10 +27,10 @@ P2ITACA_REL/
 ├── data/
 │   ├── exportaciones/    (SQL de origen, no versionado)
 │   └── raw/              (JSON de la ingesta, no versionado)
+├── docs/                 (capturas del README)
 ├── ingesta/
 │   └── ingesta_itaca_bd.py
-├── etl/
-└── dashboard/
+└── etl/
 ```
 
 ## Tecnologías
@@ -74,8 +74,19 @@ P2ITACA_REL/
 
 #### Proceso seguido
 
-1. **Entorno.** Se levantó PostgreSQL con `docker compose up -d`, se creó la base `itaca_academico` y se cargaron los cinco ficheros SQL. Se comprobaron los recuentos por año (por ejemplo, 2021: 1341 alumnos y 18906 calificaciones, coincidiendo con los comentarios de los SQL).
+1. **Entorno.** Se levantó PostgreSQL con `docker compose up -d` (el contenedor crea la base `bigdata` con el usuario administrador `admin`), se creó la base `itaca_academico` y se cargaron los cinco ficheros SQL. Se comprobaron los recuentos por año (por ejemplo, 2021: 1341 alumnos y 18906 calificaciones, coincidiendo con los comentarios de los SQL).
+
+   ```bash
+   docker compose up -d
+   docker exec -it bigdata-postgres psql -U admin -d bigdata -c "CREATE DATABASE itaca_academico;"
+   # cargar los cinco SQL de data/exportaciones/ en itaca_academico
+   ```
+
 2. **Usuario de solo lectura.** Se creó `lectura_bigdata` con `GRANT SELECT` sobre las cinco tablas, y se comprobó que un `DELETE` falla con `permission denied`.
+
+   ```bash
+   docker exec -it bigdata-postgres psql -U admin -d itaca_academico -c "CREATE USER lectura_bigdata PASSWORD '...'; GRANT SELECT ON alumnos, calificaciones, contenidos, cursos, grupos TO lectura_bigdata;"
+   ```
 3. **Entorno Python.** Entorno virtual `.venv`, dependencias en `requirements.txt` y configuración en `.env`.
 4. **Script de ingesta** (`ingesta/ingesta_itaca_bd.py`). Extrae las cinco tablas, anonimiza, valida y guarda un JSON por tabla en `data/raw/` con la fecha en el nombre.
 5. **Ejecución:** `python ingesta/ingesta_itaca_bd.py`.
@@ -122,3 +133,4 @@ Por esto, la comprobación "todo grupo referenciado en alumnos existe en grupos"
 - PowerShell bloquea la activación del entorno virtual por defecto. Se resuelve con `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`.
 - Con `docker exec` no se valida la contraseña (conexión local dentro del contenedor), pero sí desde Python por red. La contraseña del `.env` debe coincidir con la del usuario `lectura_bigdata`.
 - Con el contenedor parado el script falla con `Connection refused`: hay que ejecutar `docker compose up -d` antes de lanzar la ingesta.
+- **Limitación conocida: tildes.** Al cargar los SQL desde PowerShell con una redirección, los caracteres con tilde (UTF-8 en los ficheros de origen) se convirtieron en `?` en la base de datos, y por tanto en los JSON de `data/raw/` (por ejemplo, `Tutor?a Primero`). No afecta a los códigos ni a las claves, pero sí a los nombres de `cursos`, `contenidos` y `grupos`. Se acepta en esta práctica; para corregirlo habría que recargar la BD copiando los SQL al contenedor y ejecutándolos con `psql -f` (cliente en UTF-8), y repetir la ingesta.
